@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { X, Loader2, Plus, Check } from 'lucide-react';
 import { useDashboardStore, type DashboardState } from '@/store/dashboard-store';
 import type { WidgetDisplayMode, SelectedField } from '@/types/widget';
@@ -94,9 +94,13 @@ export function AddWidgetModal() {
   }, [editingWidgetId, isOpen, editingWidget]);
 
   const handleSubmit = () => {
-    if (!name.trim() || !apiUrl.trim()) return;
+    if (!apiUrl.trim()) return;
+    const widgetName = name.trim() || 
+      (selectedFields.length > 0 
+        ? `${selectedFields[0].label} Widget` 
+        : 'New Widget');
     const config = {
-      name: name.trim(),
+      name: widgetName,
       apiUrl: apiUrl.trim(),
       refreshInterval,
       displayMode,
@@ -127,7 +131,11 @@ export function AddWidgetModal() {
     return matchesSearch;
   });
 
-  const isValid = name.trim() && apiUrl.trim() && (testResult?.success || editingWidgetId);
+  const isValid = useMemo(() => 
+    apiUrl.trim() && 
+    selectedFields.length > 0,
+    [apiUrl, selectedFields.length]
+  );
 
   const formatSampleValue = (v: unknown): string => {
     if (v == null) return 'null';
