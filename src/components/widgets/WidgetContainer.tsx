@@ -24,6 +24,7 @@ export function WidgetContainer({ widgetId }: { widgetId: string }) {
   const { widget, refetch } = useWidgetData(widgetId);
   const removeWidget = useDashboardStore((s: DashboardState) => s.removeWidget);
   const updateWidget = useDashboardStore((s: DashboardState) => s.updateWidget);
+  const openEditModal = useDashboardStore((s: DashboardState) => s.openEditModal);
 
   if (!widget) return null;
 
@@ -112,7 +113,7 @@ export function WidgetContainer({ widgetId }: { widgetId: string }) {
               <RefreshCw className="h-4 w-4" />
             </button>
             <button
-              onClick={() => {}}
+              onClick={() => openEditModal(config.id)}
               className="rounded p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
               title="Settings"
             >

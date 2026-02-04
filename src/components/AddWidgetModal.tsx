@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Loader2, Plus, Check } from 'lucide-react';
 import { useDashboardStore, type DashboardState } from '@/store/dashboard-store';
 import type { WidgetDisplayMode, SelectedField } from '@/types/widget';
@@ -10,7 +10,10 @@ import { getLabelFromPath } from '@/lib/data-mapper';
 export function AddWidgetModal() {
   const closeAddModal = useDashboardStore((s: DashboardState) => s.closeAddModal);
   const addWidget = useDashboardStore((s: DashboardState) => s.addWidget);
+  const updateWidget = useDashboardStore((s: DashboardState) => s.updateWidget);
   const isOpen = useDashboardStore((s: DashboardState) => s.isAddModalOpen);
+  const editingWidgetId = useDashboardStore((s: DashboardState) => s.editingWidgetId);
+  const widgets = useDashboardStore((s: DashboardState) => s.widgets);
 
   const [name, setName] = useState('');
   const [apiUrl, setApiUrl] = useState('');
@@ -18,7 +21,6 @@ export function AddWidgetModal() {
   const [displayMode, setDisplayMode] = useState<WidgetDisplayMode>('card');
   const [selectedFields, setSelectedFields] = useState<SelectedField[]>([]);
   const [fieldSearch, setFieldSearch] = useState('');
-  const [arraysOnly, setArraysOnly] = useState(false);
   const [availableFields, setAvailableFields] = useState<ApiFieldInfo[]>([]);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
@@ -67,15 +69,44 @@ export function AddWidgetModal() {
     setSelectedFields((prev) => prev.filter((f) => f.path !== path));
   };
 
+  const editingWidget = editingWidgetId ? widgets.find((w) => w.config.id === editingWidgetId) : null;
+
+  useEffect(() => {
+    if (editingWidget && isOpen) {
+      setName(editingWidget.config.name);
+      setApiUrl(editingWidget.config.apiUrl);
+      setRefreshInterval(editingWidget.config.refreshInterval);
+      setDisplayMode(editingWidget.config.displayMode);
+      setSelectedFields(editingWidget.config.selectedFields);
+      if (editingWidget.data) {
+        setTestResult({ success: true, message: 'Widget loaded' });
+      }
+    } else if (!editingWidgetId && isOpen) {
+      setName('');
+      setApiUrl('');
+      setRefreshInterval(30);
+      setDisplayMode('card');
+      setSelectedFields([]);
+      setFieldSearch('');
+      setAvailableFields([]);
+      setTestResult(null);
+    }
+  }, [editingWidgetId, isOpen, editingWidget]);
+
   const handleSubmit = () => {
     if (!name.trim() || !apiUrl.trim()) return;
-    addWidget({
+    const config = {
       name: name.trim(),
       apiUrl: apiUrl.trim(),
       refreshInterval,
       displayMode,
       selectedFields: selectedFields.length > 0 ? selectedFields : [{ path: '', label: 'data' }],
-    });
+    };
+    if (editingWidgetId) {
+      updateWidget(editingWidgetId, config);
+    } else {
+      addWidget(config);
+    }
     resetAndClose();
   };
 
@@ -86,21 +117,33 @@ export function AddWidgetModal() {
     setDisplayMode('card');
     setSelectedFields([]);
     setFieldSearch('');
-    setArraysOnly(false);
     setAvailableFields([]);
     setTestResult(null);
     closeAddModal();
   };
 
   const filteredFields = availableFields.filter((f) => {
-    const matchesSearch = fieldSearch
-      ? f.path.toLowerCase().includes(fieldSearch.toLowerCase())
-      : true;
-    const matchesArray = arraysOnly ? f.type === 'array' : true;
-    return matchesSearch && matchesArray;
+    const matchesSearch = fieldSearch ? f.path.toLowerCase().includes(fieldSearch.toLowerCase()) : true;
+    return matchesSearch;
   });
 
-  const isValid = name.trim() && apiUrl.trim() && testResult?.success;
+  const isValid = name.trim() && apiUrl.trim() && (testResult?.success || editingWidgetId);
+
+  const formatSampleValue = (v: unknown): string => {
+    if (v == null) return 'null';
+    if (typeof v === 'number') {
+      if (v > 1e6) return `${(v / 1e6).toFixed(1)}M`;
+      if (v > 1e3) return `${(v / 1e3).toFixed(1)}K`;
+      return v.toFixed(2);
+    }
+    const str = String(v);
+    return str.length > 15 ? str.slice(0, 15) + '...' : str;
+  };
+
+  const getFieldDisplayName = (path: string): string => {
+    const parts = path.split(/[.[\]]/).filter(Boolean);
+    return parts[parts.length - 1] || path;
+  };
 
   if (!isOpen) return null;
 
@@ -108,7 +151,7 @@ export function AddWidgetModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl">
         <div className="sticky top-0 flex items-center justify-between border-b border-zinc-700 bg-zinc-900 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">Add New Widget</h2>
+          <h2 className="text-lg font-semibold text-white">{editingWidgetId ? 'Edit Widget' : 'Add New Widget'}</h2>
           <button
             onClick={resetAndClose}
             className="rounded p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
@@ -180,7 +223,7 @@ export function AddWidgetModal() {
             />
           </div>
 
-          {testResult?.success && (
+          {(testResult?.success || editingWidgetId) && (
             <>
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">
@@ -190,10 +233,7 @@ export function AddWidgetModal() {
                   {(['card', 'table', 'chart'] as const).map((mode) => (
                     <button
                       key={mode}
-                      onClick={() => {
-                        setDisplayMode(mode);
-                        setArraysOnly(mode === 'table' || mode === 'chart');
-                      }}
+                      onClick={() => setDisplayMode(mode)}
                       className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors ${
                         displayMode === mode
                           ? 'bg-emerald-500 text-white'
@@ -204,59 +244,45 @@ export function AddWidgetModal() {
                     </button>
                   ))}
                 </div>
-                {displayMode === 'table' && (
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Use an API that returns an array. Try:{' '}
-                    <code className="rounded bg-zinc-800 px-1">
-                      https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd
-                    </code>
-                  </p>
-                )}
-                {displayMode === 'chart' && (
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Use an API that returns an array with numeric fields. Same URL as table works.
-                  </p>
-                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={fieldSearch}
-                      onChange={(e) => setFieldSearch(e.target.value)}
-                      placeholder="Search for fields..."
-                      className="flex-1 rounded border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500"
-                    />
-                    <label className="flex items-center gap-2 text-sm text-zinc-400">
-                      <input
-                        type="checkbox"
-                        checked={arraysOnly}
-                        onChange={(e) => setArraysOnly(e.target.checked)}
-                        className="rounded"
-                      />
-                      {displayMode === 'table' || displayMode === 'chart'
-                        ? 'Show arrays only'
-                        : 'Arrays only'}
-                    </label>
-                  </div>
+                  <input
+                    type="text"
+                    value={fieldSearch}
+                    onChange={(e) => setFieldSearch(e.target.value)}
+                    placeholder="Search for fields..."
+                    className="mb-2 w-full rounded border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500"
+                  />
                   <div className="max-h-48 overflow-y-auto rounded-lg border border-zinc-600 bg-zinc-800/50">
                     {filteredFields.map((field) => (
                       <div
                         key={field.path}
-                        className="flex items-center justify-between border-b border-zinc-700/50 px-3 py-2 last:border-0"
+                        className="flex items-center gap-2 border-b border-zinc-700/50 px-3 py-2 transition-colors hover:bg-zinc-700/30 last:border-0"
                       >
-                        <span className="truncate text-sm text-zinc-300">
-                          {field.path}
-                        </span>
-                        <span className="ml-2 shrink-0 text-xs text-zinc-500">
-                          {field.type} |{' '}
-                          {String(field.sampleValue)?.slice(0, 20)}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-medium text-zinc-200">
+                              {getFieldDisplayName(field.path)}
+                            </span>
+                            <span className="shrink-0 rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">
+                              {field.type}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-zinc-500">
+                            {field.path}
+                          </div>
+                        </div>
+                        {field.sampleValue != null && (
+                          <span className="shrink-0 text-xs text-zinc-400">
+                            {formatSampleValue(field.sampleValue)}
+                          </span>
+                        )}
                         <button
                           onClick={() => addField(field)}
-                          className="ml-2 rounded p-1 text-emerald-400 hover:bg-emerald-500/20"
+                          className="shrink-0 rounded p-1.5 text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                          title="Add field"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -303,7 +329,7 @@ export function AddWidgetModal() {
             className="flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
           >
             <Check className="h-4 w-4" />
-            Add Widget
+            {editingWidgetId ? 'Save Changes' : 'Add Widget'}
           </button>
         </div>
       </div>

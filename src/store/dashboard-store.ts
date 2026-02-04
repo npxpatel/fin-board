@@ -9,6 +9,7 @@ export interface DashboardState {
   widgets: WidgetData[];
   theme: Theme;
   isAddModalOpen: boolean;
+  editingWidgetId: string | null;
   addWidget: (config: Omit<WidgetConfig, 'id'>) => void;
   removeWidget: (id: string) => void;
   updateWidget: (id: string, config: Partial<WidgetConfig>) => void;
@@ -18,6 +19,7 @@ export interface DashboardState {
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   openAddModal: () => void;
+  openEditModal: (id: string) => void;
   closeAddModal: () => void;
   exportConfig: () => string;
   importConfig: (json: string) => boolean;
@@ -31,6 +33,7 @@ export const useDashboardStore = create<DashboardState>()(
       widgets: [],
       theme: 'dark',
       isAddModalOpen: false,
+      editingWidgetId: null,
 
       addWidget: (config) =>
         set((state) => ({
@@ -94,8 +97,9 @@ export const useDashboardStore = create<DashboardState>()(
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
 
-      openAddModal: () => set({ isAddModalOpen: true }),
-      closeAddModal: () => set({ isAddModalOpen: false }),
+      openAddModal: () => set({ isAddModalOpen: true, editingWidgetId: null }),
+      openEditModal: (id: string) => set({ isAddModalOpen: true, editingWidgetId: id }),
+      closeAddModal: () => set({ isAddModalOpen: false, editingWidgetId: null }),
 
       exportConfig: (): string => {
         const state = useDashboardStore.getState();

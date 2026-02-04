@@ -69,8 +69,16 @@ function buildBarItems(
 }
 
 function getArrayPath(data: unknown, fields: SelectedField[]): string | undefined {
-  const f = fields.find((x) => x.path && isArrayField(data, x.path));
-  return f?.path;
+  const directArray = fields.find((x) => x.path && isArrayField(data, x.path));
+  if (directArray?.path) return directArray.path;
+  
+  const nested = fields.find((f) => f.path && f.path.includes('['));
+  if (nested?.path) {
+    const basePath = nested.path.split('[')[0];
+    if (basePath && isArrayField(data, basePath)) return basePath;
+  }
+  
+  return undefined;
 }
 
 function getRelativePath(fullPath: string, basePath: string): string {

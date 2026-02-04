@@ -23,8 +23,16 @@ function buildRowsFromArray(data: unknown[], fields: SelectedField[], limit = 10
 }
 
 function getArrayPath(data: unknown, fields: SelectedField[]): string | undefined {
-  const f = fields.find((x) => x.path && isArrayField(data, x.path));
-  return f?.path;
+  const directArray = fields.find((x) => x.path && isArrayField(data, x.path));
+  if (directArray?.path) return directArray.path;
+  
+  const nested = fields.find((f) => f.path && f.path.includes('['));
+  if (nested?.path) {
+    const basePath = nested.path.split('[')[0];
+    if (basePath && isArrayField(data, basePath)) return basePath;
+  }
+  
+  return undefined;
 }
 
 function getHeaderFromPath(fullPath: string, basePath: string): string {
@@ -59,6 +67,25 @@ function buildTableData(data: unknown, fields: SelectedField[]): { headers: stri
         })),
       }));
       return { headers, rows };
+    }
+  }
+
+  if (fields.length === 1) {
+    const field = fields[0];
+    const value = extractValue(data, field.path);
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const obj = value as Record<string, unknown>;
+      const entries = Object.entries(obj);
+      if (entries.length > 0) {
+        const rows = entries.map(([key, val], index) => ({
+          id: index,
+          cells: [
+            { id: `${key}-key`, value: key },
+            { id: `${key}-value`, value: formatCellValue(val) },
+          ],
+        }));
+        return { headers: ['Key', 'Value'], rows };
+      }
     }
   }
 
