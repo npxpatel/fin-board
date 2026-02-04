@@ -154,43 +154,17 @@ Each widget has several controls:
 - Widgets automatically arrange in a responsive grid
 - Positions are saved automatically
 
-## 📡 API Examples
-
-### Card Widget Examples
+## 📡 API Example
 
 **Coinbase Exchange Rates**
 ```
 URL: https://api.coinbase.com/v2/exchange-rates?currency=BTC
-Fields: data.rates.USD, data.rates.EUR
 ```
 
-**Crypto Prices**
-```
-URL: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
-Fields: bitcoin.usd
-```
-
-### Table Widget Examples
-
-**Crypto Markets**
-```
-URL: https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=10
-Fields: Select the root array, then choose fields like: id, name, current_price, market_cap
-```
-
-**Stock Data**
-```
-URL: https://api.example.com/stocks
-Fields: Select array field, then nested fields
-```
-
-### Chart Widget Examples
-
-**Price History**
-```
-URL: https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=20
-Fields: Select array, then numeric fields like: current_price, market_cap, total_volume
-```
+This API returns Bitcoin exchange rates in various currencies. You can:
+- **Card Mode**: Select fields like `data.rates.USD`, `data.rates.EUR` to display specific exchange rates
+- **Table Mode**: Select `data.rates` to display all exchange rates in a sortable table
+- **Chart Mode**: Select `data.rates` and numeric fields to visualize exchange rate comparisons
 
 ## 🛠️ Tech Stack
 

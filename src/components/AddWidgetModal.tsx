@@ -16,7 +16,7 @@ export function AddWidgetModal() {
   const widgets = useDashboardStore((s: DashboardState) => s.widgets);
 
   const [name, setName] = useState('');
-  const [apiUrl, setApiUrl] = useState('');
+  const [apiUrl, setApiUrl] = useState('https://api.coinbase.com/v2/exchange-rates?currency=BTC');
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [displayMode, setDisplayMode] = useState<WidgetDisplayMode>('card');
   const [selectedFields, setSelectedFields] = useState<SelectedField[]>([]);
@@ -83,7 +83,7 @@ export function AddWidgetModal() {
       }
     } else if (!editingWidgetId && isOpen) {
       setName('');
-      setApiUrl('');
+      setApiUrl('https://api.coinbase.com/v2/exchange-rates?currency=BTC');
       setRefreshInterval(30);
       setDisplayMode('card');
       setSelectedFields([]);
@@ -112,7 +112,7 @@ export function AddWidgetModal() {
 
   const resetAndClose = () => {
     setName('');
-    setApiUrl('');
+    setApiUrl('https://api.coinbase.com/v2/exchange-rates?currency=BTC');
     setRefreshInterval(30);
     setDisplayMode('card');
     setSelectedFields([]);
@@ -183,7 +183,6 @@ export function AddWidgetModal() {
                 type="url"
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
-                placeholder="e.g., https://api.coinbase.com/v2/exchange-rates?currency=BTC"
                 className="flex-1 rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               <button
